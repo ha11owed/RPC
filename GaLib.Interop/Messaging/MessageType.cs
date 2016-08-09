@@ -6,14 +6,16 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GaLib.Interop.Protocol
+namespace GaLib.Interop.Messaging
 {
     class MessageType
     {
         private delegate void SerializeFieldDelegate(AMessage message, BytesBuffer byteBuffer);
+        private delegate void DeserializeFieldDelegate(AMessage message, BytesBuffer byteBuffer);
 
         private readonly Type messageType;
         private readonly SerializeFieldDelegate[] serializers;
+        private readonly DeserializeFieldDelegate[] deserializers;
 
         public MessageType(Type messageType)
         {
@@ -22,7 +24,7 @@ namespace GaLib.Interop.Protocol
             List<KeyValuePair<int, PropertyInfo>> properties = new List<KeyValuePair<int, PropertyInfo>>();
             foreach (PropertyInfo pi in messageType.GetProperties())
             {
-                FieldAttribute fieldAttribute = pi.GetCustomAttribute(typeof(FieldAttribute)) as FieldAttribute;
+                MessageFieldAttribute fieldAttribute = pi.GetCustomAttribute(typeof(MessageFieldAttribute)) as MessageFieldAttribute;
                 if (fieldAttribute != null)
                 {
                     properties.Add(new KeyValuePair<int, PropertyInfo>(fieldAttribute.Index, pi));
@@ -36,39 +38,90 @@ namespace GaLib.Interop.Protocol
             }
 
             serializers = new SerializeFieldDelegate[properties.Count];
+            deserializers = new DeserializeFieldDelegate[properties.Count];
+
             for (int i = 0; i < properties.Count; i++)
             {
                 int index = properties[i].Key;
                 PropertyInfo propertyInfo = properties[i].Value;
+
                 SerializeFieldDelegate sf = null;
+                DeserializeFieldDelegate df = null;
+
                 if (propertyInfo.PropertyType == typeof(int))
                 {
                     Func<AMessage, int> getter = CreateMethod<Func<AMessage, int>>(propertyInfo.GetGetMethod());
                     sf = (m, bb) => bb.WriteInt(getter(m));
+
+                    Action<AMessage, int> setter = CreateMethod<Action<AMessage, int>>(propertyInfo.GetSetMethod());
+                    df = (m, bb) => setter(m, bb.ReadInt32());
                 }
                 else if (propertyInfo.PropertyType == typeof(uint))
                 {
                     Func<AMessage, uint> getter = CreateMethod<Func<AMessage, uint>>(propertyInfo.GetGetMethod());
                     sf = (m, bb) => bb.WriteUInt(getter(m));
+
+                    Action<AMessage, uint> setter = CreateMethod<Action<AMessage, uint>>(propertyInfo.GetSetMethod());
+                    df = (m, bb) => setter(m, bb.ReadUInt32());
                 }
                 else if (propertyInfo.PropertyType == typeof(Guid))
                 {
                     Func<AMessage, Guid> getter = CreateMethod<Func<AMessage, Guid>>(propertyInfo.GetGetMethod());
                     sf = (m, bb) => bb.WriteGuid(getter(m));
+
+                    Action<AMessage, Guid> setter = CreateMethod<Action<AMessage, Guid>>(propertyInfo.GetSetMethod());
+                    df = (m, bb) => setter(m, bb.ReadGuid());
                 }
                 else if (propertyInfo.PropertyType == typeof(object))
                 {
                     Func<AMessage, object> getter = CreateMethod<Func<AMessage, object>>(propertyInfo.GetGetMethod());
                     sf = (m, bb) => bb.WriteObject(getter(m));
+
+                    Action<AMessage, object> setter = CreateMethod<Action<AMessage, object>>(propertyInfo.GetSetMethod());
+                    df = (m, bb) => setter(m, bb.ReadObject());
                 }
                 else if (propertyInfo.PropertyType == typeof(object[]))
                 {
                     Func<AMessage, object[]> getter = CreateMethod<Func<AMessage, object[]>>(propertyInfo.GetGetMethod());
                     sf = (m, bb) => bb.WriteObjectArray(getter(m));
+
+                    Action<AMessage, object[]> setter = CreateMethod<Action<AMessage, object[]>>(propertyInfo.GetSetMethod());
+                    df = (m, bb) => setter(m, bb.ReadObjectArray());
+                }
+                else if (propertyInfo.PropertyType == typeof(string))
+                {
+                    Func<AMessage, string> getter = CreateMethod<Func<AMessage, string>>(propertyInfo.GetGetMethod());
+                    sf = (m, bb) => bb.WriteString(getter(m));
+
+                    Action<AMessage, string> setter = CreateMethod<Action<AMessage, string>>(propertyInfo.GetSetMethod());
+                    df = (m, bb) => setter(m, bb.ReadString());
+                }
+                else if (propertyInfo.PropertyType == typeof(Type))
+                {
+                    Func<AMessage, Type> getter = CreateMethod<Func<AMessage, Type>>(propertyInfo.GetGetMethod());
+                    sf = (m, bb) => bb.WriteType(getter(m));
+
+                    Action<AMessage, Type> setter = CreateMethod<Action<AMessage, Type>>(propertyInfo.GetSetMethod());
+                    df = (m, bb) => setter(m, bb.ReadType());
+                }
+                else if (propertyInfo.PropertyType == typeof(MethodInfo))
+                {
+                    Func<AMessage, MethodInfo> getter = CreateMethod<Func<AMessage, MethodInfo>>(propertyInfo.GetGetMethod());
+                    sf = (m, bb) => bb.WriteMethodInfo(getter(m));
+
+                    Action<AMessage, MethodInfo> setter = CreateMethod<Action<AMessage, MethodInfo>>(propertyInfo.GetSetMethod());
+                    df = (m, bb) => setter(m, bb.ReadMethodInfo());
+                }
+                else
+                {
+                    throw new NotImplementedException("Type " + propertyInfo.PropertyType + " is not suppoerted");
                 }
                 serializers[i] = sf;
+                deserializers[i] = df;
             }
         }
+
+        public Type MessageClassType { get { return messageType; } }
 
         public byte[] Compile(AMessage message)
         {
@@ -78,6 +131,15 @@ namespace GaLib.Interop.Protocol
                 serializer(message, bb);
             }
             return bb.ToByteArray();
+        }
+
+        public void Deserialize(AMessage message, byte[] data)
+        {
+            BytesBuffer bb = new BytesBuffer(data);
+            foreach (var deserializer in deserializers)
+            {
+                deserializer(message, bb);
+            }
         }
 
         /// <summary>
