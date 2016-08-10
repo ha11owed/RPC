@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace GaLib.Interop.Messaging
 {
-    public class StreamHelper
+    class StreamHelper
     {
         public static AsyncResult BeginWrite(Stream stream, AMessage message)
         {

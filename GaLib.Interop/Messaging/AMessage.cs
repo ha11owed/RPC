@@ -12,7 +12,7 @@ namespace GaLib.Interop.Messaging
     /// <summary>
     /// Base class for all the messages used to do the IPC communication
     /// </summary>
-    public abstract class AMessage
+    abstract class AMessage
     {
         private readonly MessageType messageType;
 
@@ -26,10 +26,16 @@ namespace GaLib.Interop.Messaging
         /// </summary>
         public abstract byte Id { get; }
 
-        public byte[] Compile()
+        public void Serialize(BytesBuffer bb)
         {
-            byte[] data = messageType.Compile(this);
-            return data;
+            messageType.Serialize(this, bb);
+        }
+
+        public byte[] ToBytes()
+        {
+            BytesBuffer bb = new BytesBuffer(128);
+            messageType.Serialize(this, bb);
+            return bb.ToByteArray();
         }
 
         public AsyncResult BeginWrite(Stream stream)

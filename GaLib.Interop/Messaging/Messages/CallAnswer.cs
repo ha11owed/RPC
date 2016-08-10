@@ -23,7 +23,7 @@ namespace GaLib.Interop.Messaging.Messages
         public object[] ParameterOutValues { get; set; }
 
         [MessageField(3)]
-        public object ReturnType { get; set; }
+        public object ReturnValue { get; set; }
 
         [MessageField(4)]
         public string ExceptionMessage { get; set; }

@@ -16,8 +16,9 @@ namespace GaLib.Interop.Test
     {
         static void Main(string[] args)
         {
-            TestMessageSerialization();
+            //TestMessageSerialization();
             //TestProxy();
+            PipeTests.TestPushAndPull();
 
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey(true);
@@ -29,7 +30,7 @@ namespace GaLib.Interop.Test
             msg1.MethodInfoId = Guid.NewGuid();
             msg1.Target = Guid.NewGuid();
             msg1.ParameterValues = new object[] { 1, 2, 3 };
-            byte[] data = msg1.Compile();
+            byte[] data = msg1.ToBytes();
 
             CallRequest msg2 = (CallRequest)MessageManager.Create(msg1.Id, data);
 
@@ -59,7 +60,7 @@ namespace GaLib.Interop.Test
             MethodInfoAnswer miAnswer1 = new MethodInfoAnswer();
             miAnswer1.MethodInfoId = Guid.NewGuid();
             miAnswer1.MethodInfo = mainMethodInfo;
-            byte[] miAnswerBytes = miAnswer1.Compile();
+            byte[] miAnswerBytes = miAnswer1.ToBytes();
             MethodInfoAnswer miAnswer2 = (MethodInfoAnswer)AMessage.Create(miAnswer1.Id, miAnswerBytes);
 
             Debug.Assert(miAnswer1.MethodInfo == miAnswer2.MethodInfo);

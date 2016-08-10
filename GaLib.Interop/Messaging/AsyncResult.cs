@@ -11,7 +11,7 @@ namespace GaLib.Interop.Messaging
     /// <summary>
     /// Encapsulates the results of an asynchronous operation.
     /// </summary>
-    public class AsyncResult : IAsyncResult
+    class AsyncResult : IAsyncResult
     {
         private bool _isCompleted = false;
         private ManualResetEvent _AsyncWaitHandle = null;

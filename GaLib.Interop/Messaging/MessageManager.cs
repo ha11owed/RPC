@@ -98,5 +98,17 @@ namespace GaLib.Interop.Messaging
             }
             return result;
         }
+
+        public static AMessage Create(byte id, BytesBuffer bb)
+        {
+            AMessage result = null;
+            MessageType messageType = messageTypes[id];
+            if (messageType != null)
+            {
+                result = (AMessage)Activator.CreateInstance(messageType.MessageClassType);
+                messageType.Deserialize(result, bb);
+            }
+            return result;
+        }
     }
 }

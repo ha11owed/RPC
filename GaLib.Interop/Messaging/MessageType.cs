@@ -123,19 +123,21 @@ namespace GaLib.Interop.Messaging
 
         public Type MessageClassType { get { return messageType; } }
 
-        public byte[] Compile(AMessage message)
+        public void Serialize(AMessage message, BytesBuffer bb)
         {
-            BytesBuffer bb = new BytesBuffer();
             foreach (var serializer in serializers)
             {
                 serializer(message, bb);
             }
-            return bb.ToByteArray();
         }
 
         public void Deserialize(AMessage message, byte[] data)
         {
-            BytesBuffer bb = new BytesBuffer(data);
+            Deserialize(message, new BytesBuffer(data));
+        }
+
+        public void Deserialize(AMessage message, BytesBuffer bb)
+        {
             foreach (var deserializer in deserializers)
             {
                 deserializer(message, bb);

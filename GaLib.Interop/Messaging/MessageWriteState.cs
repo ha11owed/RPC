@@ -22,7 +22,7 @@ namespace GaLib.Interop.Messaging
             this.message = message;
             this.asyncResult = asyncResult;
 
-            byte[] data = message.Compile();
+            byte[] data = message.ToBytes();
             int headerSize = 1 + sizeof(int);
             buffer = new byte[headerSize + data.Length];
             // Populate the header
